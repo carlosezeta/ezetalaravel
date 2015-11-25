@@ -22,7 +22,7 @@ class CreateProductoRequest extends FormRequest
             'emailaccounts' => 'required',
             'ftpaccounts' => 'required',
             'paquete' => 'required',
-            'type' => 'required',
+            'description' => 'required',
             'server_id' => 'required',
         ];
     }
