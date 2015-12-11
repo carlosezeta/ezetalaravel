@@ -2,18 +2,26 @@
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Log;
-use Laracasts\Flash\Flash;
+use Illuminate\Support\Facades\Request;
 use Modules\Core\Http\Controllers\BasePublicController;
 use Modules\HostingModule\Entities\Cuenta;
 use Modules\HostingModule\Entities\Producto;
 use Modules\Shop\Entities\Carro;
 use Modules\Shop\Entities\Item;
+use Modules\Shop\Entities\Order;
+use Modules\Shop\Entities\Transaction;
+use Modules\Shop\Http\Requests\EnviarPagoRequest;
 use Modules\Shop\Http\Requests\ItemDeleteRequest;
 use Modules\Shop\Http\Requests\ShopHostingRequest;
 use Modules\Shop\Repositories\CartRepository;
 use Modules\Shop\Repositories\OrderRepository;
 use Modules\Shop\Repositories\TransactionRepository;
 use Gloudemans\Shoppingcart\Facades\Cart;
+use Modules\User\Entities\Sentinel\User;
+use Stripe\Charge;
+use Stripe\Customer;
+use Stripe\Error\Card;
+use Stripe\Stripe;
 
 class PublicController extends BasePublicController
 {
@@ -71,7 +79,6 @@ class PublicController extends BasePublicController
         $hosting = Producto::find($id);
         $this->throw404IfNotFound($hosting);
         $user = $this->auth->check();
-        $productos = Producto::all();
 
         $data['domainoption'] = $request->input('domainoption');
 
@@ -121,11 +128,15 @@ class PublicController extends BasePublicController
 
         if ($user) {
             $carro = Carro::where('user_id', '=', $user->id)->first();
-            if (empty($carro)) {
-                Log::info('Dentro del if del user - 1. El valor de $user es: ' . $user);
-                $carro = new Carro();
-                $carro->user_id = $user->id;
-                $carro->save();
+            if (!$carro) {
+                $carro = Carro::withTrashed()->where('user_id', '=', $user->id)->first();
+                if (!$carro) {
+                    $carro = new Carro();
+                    $carro->user_id = $user->id;
+                    $carro->save();
+                } else {
+                    $carro->restore();
+                }
             }
 
             // Añadimos el hosting al carro de la base de datos:
@@ -157,9 +168,9 @@ class PublicController extends BasePublicController
                     'id' => $data['domainoption'].$data['tld'],
                     'name' => $data['domainoption'].': '.$data['domain'].'.'.$data['tld'],
                     'qty' => 1,
-                    'price' => $hosting->price*10,
+                    'price' => 12.25,
                     'options' => [
-                        'tax' => $hosting->price * 10 * 0.21,
+                        'tax' => 12.25 * 0.21,
                         'domain' => $data['domain'] . '.' . $data['tld'],
                     ]
                 ]);
@@ -223,13 +234,172 @@ class PublicController extends BasePublicController
             $template = 'loginregistro';
             return view($template);
         }
-        $carro = Carro::with('items')->where('user_id','=',$user->id)->first();
-        if (!$carro->$items) {
+        $carro = Carro::where('user_id','=',$user->id)->first();
+        if ($carro) {
+            Log::info('Hay carro');
+            $items = Item::where('cart_id', '=', $carro->id)->get();
+            if (!$items) {
+                Log::info('No hay items');
+                // Si el carro está vacío (no debería haber carro, pero por si acaso...
+                $carro->destroy();
+                flash()->error('No se ha encontrado ningún producto en la cesta.');
+                return redirect('/');
+            }
+            Log::info('Hay items');
+        } else {
+            Log::info('No hay carro');
+            // Si no hay carro
             flash()->error('No se ha encontrado ningún producto en la cesta.');
             return redirect('/');
         }
+        Log::info('Hay carro y hay items:');
+        Log::info($carro);
+        Log::info($items);
+        // Aquí creamos el pedido y eliminamos el carro.
+
+        $order = new Order();
+        $order->user_id = $user->id;
+        $order->totalPrice = Cart::total();
+        $order->totalTax = Cart::total()*0.21;
+        $order->total = Cart::total()*1.21;
+        $order->statusCode = 'in_creation';
+        $order->save();
+
+        Log::info('Pedido creado');
+        Log::info($order);
+
+        Log::info('Recorremos items:');
+        $numeroDeItem = 1;
+        foreach ($items as $item) {
+            Log::info('Item: '.$numeroDeItem. ' valor al entrar:');
+            Log::info($item);
+            $item->cart_id = null;
+            $item->order_id = $order->id;
+            $item->save();
+            Log::info('Valor al salir:');
+            Log::info($item);
+            $numeroDeItem +=1;
+        }
+
+        Log::info('Hemos terminado con los items. El carro es:');
+        Log::info($carro);
+        $carro->delete();
+        Cart::destroy();
+
 
         $template = 'pago';
+        return view($template, compact(['items', 'order']));
+    }
+
+
+    /**
+     *
+     * @return \Illuminate\View\View
+     */
+    public function getPagar()
+    {
+        $user = $this->auth->check();
+        if (!$user) {
+            return redirect()->route('auth.login');
+        }
+        $order = Order::where('user_id','=',$user->id)
+                        ->where(function ($query) {
+                            $query->where('statusCode', '=', 'in_creation')
+                                  ->orWhere('statusCode', '=', 'pending');
+
+                        })
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+
+        if (!$order) {
+            flash()->error('No hay ningún pedido');
+            return redirect('/');
+        }
+
+        $items = Item::where('order_id', '=', $order->id)->get();
+
+
+        $template = 'pago';
+        return view($template, compact(['items', 'order']));
+    }
+
+    /**
+     *
+     * @return \Illuminate\View\View
+     */
+    public function postPagar(EnviarPagoRequest $request)
+    {
+        $order = Order::find($request->input('order_id'));
+        $amount = $order->total*100;
+        $token = $request->input('stripeToken');
+        $first_name = $request->input('first_name');
+        $last_name = $request->input('last_name');
+        $email = $request->input('email');
+        $emailCheck = User::where('email', $email)->value('email');
+
+        Stripe::setApiKey(env('STRIPE_SK'));
+
+        // If the email doesn't exist in the database create new customer and user record
+        if (!isset($emailCheck)) {
+            // Create a new Stripe customer
+            try {
+                $customer = Customer::create([
+                    'source' => $token,
+                    'email' => $email,
+                    'metadata' => [
+                        "First Name" => $first_name,
+                        "Last Name" => $last_name
+                    ]
+                ]);
+            } catch (Card $e) {
+                return redirect()->route('order')
+                    ->withErrors($e->getMessage())
+                    ->withInput();
+            }
+
+            $customerID = $customer->id;
+
+            // Create a new user in the database with Stripe
+            $user = User::create([
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'email' => $email,
+                'stripe_customer_id' => $customerID,
+            ]);
+        } else {
+            $customerID = User::where('email', $email)->value('stripe_customer_id');
+            $user = User::where('email', $email)->first();
+        }
+
+        $user = $this->auth->check();
+        //TODO: ¿Cómo verificamos si tenemos el customer creado en Stripe?
+        $customerID = $user->stripe_customer_id;
+        // Charging the Customer with the selected amount
+        try {
+            $charge = Charge::create([
+                'amount' => $amount,
+                'currency' => 'eur',
+                'customer' => $customerID,
+                'metadata' => [
+                    'order_id' => $order->id
+                ]
+            ]);
+        } catch (Card $e) {
+            return redirect()->route('getPagar')
+                ->withErrors($e->getMessage())
+                ->withInput();
+        }
+
+        // Create transaction record in the database
+        Transaction::create([
+            'order_id' => $order->id,
+            'gateway' => 'stripe',
+            'token' => $token,
+            'transaction_id' => $charge->id,
+        ]);
+
+        //TODO: Reenviamos a una página de confirmación de la compra
+        $template = 'pagocorrecto';
         return view($template);
     }
 

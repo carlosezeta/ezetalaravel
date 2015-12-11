@@ -9,4 +9,6 @@ if (! App::runningInConsole()) {
     $router->get('/shop/carro', ['uses' => 'PublicController@getCarro', 'as' => 'getCarro']);
     $router->delete('/shop/eliminar/{id}', ['uses' => 'PublicController@eliminar', 'as' => 'delete.item']);
     $router->get('/shop/checkout', ['uses' => 'PublicController@checkout', 'as' => 'checkout']);
+    $router->get('/shop/pagar', ['uses' => 'PublicController@getPagar', 'as' => 'getPagar']);
+    $router->post('/shop/pagar', ['uses' => 'PublicController@postPagar', 'as' => 'postPagar']);
 }
