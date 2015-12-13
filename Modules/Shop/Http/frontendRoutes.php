@@ -11,4 +11,5 @@ if (! App::runningInConsole()) {
     $router->get('/shop/checkout', ['uses' => 'PublicController@checkout', 'as' => 'checkout']);
     $router->get('/shop/pagar', ['uses' => 'PublicController@getPagar', 'as' => 'getPagar']);
     $router->post('/shop/pagar', ['uses' => 'PublicController@postPagar', 'as' => 'postPagar']);
+    $router->get('/factura', ['uses' => 'FacturasController@invoice', 'as' => 'verFactura']);
 }
