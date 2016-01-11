@@ -1,17 +1,11 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Carlos
- * Date: 13/12/2015
- * Time: 15:38
- */
 
 namespace Modules\Shop\Events\Handlers;
-
 
 use Illuminate\Support\Facades\Log;
 use Modules\User\Events\UserHasActivatedAccount;
 use Stripe\Customer;
+use Stripe\Stripe;
 
 class ObtenerStripeCustomerId
 {
@@ -20,6 +14,8 @@ class ObtenerStripeCustomerId
         Log::info('Estsamos en ObtenerStripeCustomerID@handle');
 
         $user = $event->user;
+
+        Stripe::setApiKey(env('STRIPE_SK'));
 
         // Create a new Stripe customer
         $customer = Customer::create([

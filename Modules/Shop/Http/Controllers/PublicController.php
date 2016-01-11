@@ -1,8 +1,10 @@
 <?php namespace Modules\Shop\Http\Controllers;
 
+use Helge\Client\SimpleWhoisClient;
+use Helge\Loader\JsonLoader;
+use Helge\Service\DomainAvailability;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Request;
 use Modules\Core\Http\Controllers\BasePublicController;
 use Modules\HostingModule\Entities\Cuenta;
 use Modules\HostingModule\Entities\Producto;
@@ -76,11 +78,14 @@ class PublicController extends BasePublicController
      */
     public function postHosting($id, ShopHostingRequest $request)
     {
+
         $hosting = Producto::find($id);
         $this->throw404IfNotFound($hosting);
         $user = $this->auth->check();
 
         $data['domainoption'] = $request->input('domainoption');
+
+        Log::info($data['domainoption']);
 
         if ($data['domainoption'] == 'subdomain') {
             $data['domain'] = $request->input('domain') . '.ezetahosting.com';
@@ -300,7 +305,7 @@ class PublicController extends BasePublicController
     {
         $user = $this->auth->check();
         if (!$user) {
-            return redirect()->route('auth.login');
+            return redirect()->route('login');
         }
         $order = Order::where('user_id','=',$user->id)
                         ->where(function ($query) {
@@ -372,7 +377,7 @@ class PublicController extends BasePublicController
         }
 
         $user = $this->auth->check();
-        //TODO: ¿Cómo verificamos si tenemos el customer creado en Stripe?
+
         $customerID = $user->stripe_customer_id;
         // Charging the Customer with the selected amount
         try {
@@ -436,11 +441,11 @@ class PublicController extends BasePublicController
     }
 
     /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
+ * Remove the specified resource from storage.
+ *
+ * @param  int  $id
+ * @return \Illuminate\Http\Response
+ */
     public function eliminar(ItemDeleteRequest $request, $id) {
 
         if ($request->ajax()) {
@@ -460,10 +465,37 @@ class PublicController extends BasePublicController
             }
             Log::info(Cart::count());
             Log::info($vacio);
-            $subtotal = number_format(Cart::total(),2,',','.');
-            $iva = number_format($subtotal*0.21,2,',','.');
-            $total = number_format($subtotal*1.21,2,',','.');
+            $sub = Cart::total();
+            $subtotal = number_format($sub,2,',','.');
+            $iva = number_format($sub*0.21,2,',','.');
+            $total = number_format($sub*1.21,2,',','.');
             return response()->json(['subtotal' => $subtotal, 'iva' => $iva, 'importetotal' => $total, 'vacio' => $vacio]);
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function comprobarDominio(ItemDeleteRequest $request, $dominio) {
+
+        if ($request->ajax()) {
+
+            $whoisClient = new SimpleWhoisClient();
+            Log::info(config('helgedomaintools.path'));
+            $dataLoader = new JsonLoader(config('helgedomaintools.path'));
+            $service = new DomainAvailability($whoisClient, $dataLoader);
+
+            if ($service->isAvailable($dominio)) {
+                $disponible = true;
+            } else {
+                $disponible = false;
+            }
+
+            return response()->json(['disponible' => $disponible]);
+
         }
     }
 

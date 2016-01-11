@@ -12,4 +12,10 @@ if (! App::runningInConsole()) {
     $router->get('/shop/pagar', ['uses' => 'PublicController@getPagar', 'as' => 'getPagar']);
     $router->post('/shop/pagar', ['uses' => 'PublicController@postPagar', 'as' => 'postPagar']);
     $router->get('/factura', ['uses' => 'FacturasController@invoice', 'as' => 'verFactura']);
+    $router->post('/shop/comprobar/{dominio}', ['uses' => 'PublicController@comprobarDominio', 'as' => 'comprobar.dominio']);
+
+    $router->get('/clientes', ['uses' => 'PrivateController@home', 'as' => 'private']);
+    $router->get('/clientes/hosting', ['uses' => 'PrivateController@hosting', 'as' => 'private.hosting']);
+    $router->get('/clientes/dominios', ['uses' => 'PrivateController@dominios', 'as' => 'private.dominios']);
+
 }

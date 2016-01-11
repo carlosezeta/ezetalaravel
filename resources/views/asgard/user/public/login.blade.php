@@ -1,10 +1,11 @@
 @extends('layouts.master')
-
+@section('title')
+    {{ trans('user::auth.login') }} | @parent
+@stop
 
 @section('content')
 
 <!-- Login form -->
-@include('flash::message')
 
 {!! Form::open(['route' => 'login.post', 'class' => 'form-login form-wrapper form-narrow']) !!}
 <h3 class="title-divider">
