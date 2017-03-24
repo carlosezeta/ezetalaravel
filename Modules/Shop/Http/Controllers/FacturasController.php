@@ -16,14 +16,15 @@ class FacturasController extends Controller {
 
 	public function invoice()
 	{
-		$data = $this->getData();
-		$date = date('Y-m-d');
-		$invoice = "2222";
+		//$data = $this->getData();
+		$date = date('d/m/Y');
+		$invoice = "2015/0403";
 
-		$order = Order::find(6);
+		$order = Order::find(3);
 		$items = Item::where('user_id', '=', 1)->get();
 
-		$pdf = SnappyPdf::loadView('shop::pdf.invoice', compact('data', 'date', 'invoice', 'order', 'items'));
+
+		$pdf = SnappyPdf::loadView('shop::pdf.invoice', compact('date', 'invoice', 'order', 'items'));
 		$pdf->setOption('margin-top', 0);
 		$pdf->setOption('margin-left', 0);
 		$pdf->setOption('margin-right', 0);

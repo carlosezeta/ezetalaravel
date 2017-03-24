@@ -23,7 +23,11 @@ class PublicController extends BasePublicController
 
         $productos = Producto::all();
 
-        return \View::make('')
+        $page = Page::find(2);
+
+        $template = Page::getTemplateForPage($page);
+
+        return view($template, compact(['page', 'productos']));
 
     }
 

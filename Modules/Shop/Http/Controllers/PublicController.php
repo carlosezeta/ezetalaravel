@@ -78,7 +78,7 @@ class PublicController extends BasePublicController
      */
     public function postHosting($id, ShopHostingRequest $request)
     {
-
+        Log::info('Entramos en postHosting');
         $hosting = Producto::find($id);
         $this->throw404IfNotFound($hosting);
         $user = $this->auth->check();
@@ -132,6 +132,7 @@ class PublicController extends BasePublicController
 
 
         if ($user) {
+            Log::info('El usuario estaba logueado');
             $carro = Carro::where('user_id', '=', $user->id)->first();
             if (!$carro) {
                 $carro = Carro::withTrashed()->where('user_id', '=', $user->id)->first();
@@ -154,6 +155,8 @@ class PublicController extends BasePublicController
             } else {
                 $carro->add(['user_id' => $user->id, 'id' => 'subdominio', 'name' => $data['domainoption'] . ': ' . $data['domain'] . '.' . $data['tld'], 'qty' => 1, 'price' => 0, 'tax' => 0]);
             }
+        } else {
+            Log::info('El usuario no estaba logueado');
         }
 
         Cart::add([

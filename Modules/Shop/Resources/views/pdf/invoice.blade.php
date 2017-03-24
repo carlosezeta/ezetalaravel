@@ -129,21 +129,20 @@
             <div class="col-xs-5">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h4>De: <a href="#">Ezetahosting SL</a></h4>
+                        <h4>De: <a href="#">ezetahosting.com</a></h4>
                     </div>
-                    <div class="panel-body">Dirección <br>
-                        detalles <br>
-                        más detalles</div>
+                    <div class="panel-body">C/Marquès de Caldes de Montbui <br>
+                        87-89, 1º, 3ª<br>
+                        17003 - Girona (España)</div>
                 </div>
             </div>
             <div class="col-xs-5 col-xs-offset-2 text-right">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h4>Para : <a href="#">Nombre del Cliente</a></h4>
+                        <h4>Para : <a href="#">CGT AGE</a></h4>
                     </div>
-                    <div class="panel-body">Dirección <br>
-                        detalles <br>
-                        más detalles</div>
+                    <div class="panel-body">C/Alenza 13<br>
+                        28003 - Madrid (España)</div>
                 </div>
             </div>
 
@@ -221,6 +220,8 @@
                         Entidad: CaixaBank
                         <br>
                         IBAN: ES24 1234 5678 1234 5678 1234
+                        <br>
+                        BIC: CAIXESBBXXX
                     </div>
                 </div>
             </div>
@@ -235,7 +236,7 @@
                         <br>
                         Móvil: +34 665 96 60 50
                         <br>
-                        Twitter: <a href="https://twitter.com/ezetahosting">@ezetahosting</a> | web: <a href="http://www.suweb.com/author/usted">http://www.ezetahosting.com/</a>
+                        Twitter: <a href="https://twitter.com/ezetahosting">@ezetahosting</a> | web: <a href="http://www.ezetahosting.com">http://www.ezetahosting.com/</a>
                         <br>
                         <h5><small> El pago debe ser por transferencia bancaria</small></h5>
                     </div>
